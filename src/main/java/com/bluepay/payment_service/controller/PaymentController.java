@@ -77,7 +77,7 @@ public class PaymentController {
      * GET /api/payments/1
      * Returns the payment details if payment ID 1 exists.
      */
-    @GetMapping("/{id}")
+    @GetMapping("jaga/{id}")
     public ResponseEntity<PaymentResponse> getPaymentById(
             @PathVariable Long id) {
 
