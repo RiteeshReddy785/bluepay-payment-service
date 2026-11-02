@@ -1,5 +1,7 @@
 
-name: BluePay CI Pipeline
+
+
+name: BluePay CI/CD Pipeline
 
 on:
   push:
@@ -9,27 +11,46 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
-  build:
-    name: Build Spring Boot and Docker Image
+  build-and-push:
+    name: Build and Push BluePay Docker Image
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: Set up Java
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: maven
 
-      - name: Build with Maven
+      - name: Build Spring Boot application
         run: mvn clean package -DskipTests
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Build Docker image
-        run: docker build -t bluepay-backend:${{ github.sha }} .
+        run: |
+          docker build -t bluepay.azurecr.io/bluepay-backend:${{ github.sha }} .
+
+      - name: Login to Azure
+        if: github.event_name == 'push'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to Azure Container Registry
+        if: github.event_name == 'push'
+        run: az acr login --name bluepay
+
+      - name: Push Docker image to ACR
+        if: github.event_name == 'push'
+        run: |
+          docker push bluepay.azurecr.io/bluepay-backend:${{ github.sha }}
